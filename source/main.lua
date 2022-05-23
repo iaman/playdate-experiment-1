@@ -297,10 +297,5 @@ function playdate.update()
     end
   end
 
-  -- gfx.drawTextAligned( gfx.getLocalizedText( "momentum_label", gfx.font.kLanguageEnglish ) .. momentum, 200, 60, kTextAlignment.center )
-  -- gfx.drawTextAligned( gfx.getLocalizedText( "momentum_timer_label", gfx.font.kLanguageEnglish ) .. momentumTimer.currentTime, 200, 100, kTextAlignment.center )
-  -- gfx.drawTextAligned( gfx.getLocalizedText( "crank_change_label", gfx.font.kLanguageEnglish ) .. crankChange, 200, 140, kTextAlignment.center )
-  -- gfx.drawTextAligned( gfx.getLocalizedText( "crank_change_accel_label", gfx.font.kLanguageEnglish ) .. crankChangeAccel, 200, 180, kTextAlignment.center )
-
   playdate.timer.updateTimers()
 end
