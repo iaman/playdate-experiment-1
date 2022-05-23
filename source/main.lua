@@ -273,8 +273,6 @@ function playdate.update()
     end
   end
 
-  dropletCount = # droplets
-  actualDropletCount = 0
   Droplet.setRenderer()
 
   for i = 1, dropletCount do
