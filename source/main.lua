@@ -266,15 +266,10 @@ function playdate.update()
   end
 
   dropletCount = # droplets
-  local cullableDroplets = 0
 
   for i = 1, dropletCount do
     if ( type( droplets[i] ) == "table" ) then
       droplets[i]:drip()
-
-      if ( droplets[i].cullMe ) then
-        cullableDroplets = cullableDroplets + 1
-      end
     end
   end
 
