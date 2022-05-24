@@ -157,7 +157,7 @@ function RainDrop:fall( momentum )
     for i = # self.positions, 2, -1 do
       if ( self.positions[i].y < screenHeight and self.positions[i - 1].y >= screenHeight ) then
         local slope = ( self.positions[i - 1].y - self.positions[i].y ) / ( self.positions[i - 1].x - self.positions[i].x )
-        local dropletXPos = -1 * ( ( ( self.positions[i - 1].y - 240 ) / slope ) - self.positions[i - 1].x )
+        local dropletXPos = -1 * ( ( ( self.positions[i - 1].y - screenHeight ) / slope ) - self.positions[i - 1].x )
 
         table.insert( droplets, Droplet.new( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi ) )
       end
