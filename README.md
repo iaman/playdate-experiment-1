@@ -1,2 +1,2 @@
-# Playdate Experiment #1
+# Craink
 A little naïve rain simulation.

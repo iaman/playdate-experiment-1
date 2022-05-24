@@ -1,0 +1,5 @@
+name=Craink
+author=iaman
+description=A naîve rain simulation
+bundleID=voyage.neon.craink
+version=1.0.0
