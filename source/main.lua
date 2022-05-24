@@ -1,5 +1,3 @@
-import "CoreLibs/object"
-import "CoreLibs/graphics"
 import "CoreLibs/easing"
 import "CoreLibs/timer"
 
@@ -9,11 +7,10 @@ local screenHeight <const> = 240
 local rainAreaHorizontalBuffer <const> = 200
 local momentum, momentumTimer
 
-local dropletCount = 0
-local droplets = {}
-local dropletSpeed = 6
-local dropletMinCount = 2
-local dropletMaxCount = 4
+local droplets <const> = {}
+local dropletSpeed <const> = 6
+local dropletMinCount <const> = 2
+local dropletMaxCount <const> = 4
 
 
 local Droplet = {
@@ -77,33 +74,32 @@ function Droplet:render()
   gfx.drawPixel( self.x + 1, self.y )
 end
 
-local raindropCount = 1
-local raindropMinDistance = 8
-local raindropMaxDistance = 16
-local raindrops = {}
-local raindropSpeed = 18
-local raindropMinPositions = 2
-local raindropMaxPositions = 8
-local raindropVerticalSpacing = 1
+local raindropMinDistance <const> = 8
+local raindropMaxDistance <const> = 16
+local raindrops <const> = {}
+local raindropSpeed <const> = 18
+local raindropMinPositions <const> = 2
+local raindropMaxPositions <const> = 8
+local raindropVerticalSpacing <const> = 1
 
 local RainDrop = {
   positions = {},
-  positionCount = 2
 }
 
 RainDrop.__index = RainDrop
 
 function RainDrop.new( x, y, positionCount )
   local newMeta = {
-    positions = {},
-    positionCount = 2
+    positions = {}
   }
 
   if ( type( positionCount ) == "number" and positionCount > 2) then
-    newMeta.positionCount = math.floor( positionCount )
+    positionCount = math.floor( positionCount )
+  else
+    positionCount = 2
   end
 
-  for i = 1, newMeta.positionCount do
+  for i = 1, positionCount do
     newMeta.positions[i] = {}
 
     if ( type( x ) == "number" ) then
@@ -132,21 +128,21 @@ function RainDrop.setRenderer()
 end
 
 function RainDrop:render()
-  for i, position in next, self.positions do
-    local nextPosition = self.positions[ next( self.positions, i ) ]
-    if ( nextPosition ~= nil ) then
-      if ( position.x ~= nextPosition.x and position.y ~= nextPosition.y ) then
-        gfx.drawLine( position.x, position.y, nextPosition.x, nextPosition.y )
-      end
+  for i = 1, # self.positions - 1 do
+    local position = self.positions[ i ]
+    local nextPosition = self.positions[ i + 1 ]
+
+    if ( position.x ~= nextPosition.x and position.y ~= nextPosition.y ) then
+      gfx.drawLine( position.x, position.y, nextPosition.x, nextPosition.y )
     end
   end
 end
 
 function RainDrop:fall( momentum )
-  if ( self.positions[ self.positionCount ].y >= screenHeight ) then
+  if ( self.positions[ # self.positions ].y >= screenHeight ) then
     self:reset()
   else
-    for i = self.positionCount, 2, -1 do
+    for i = # self.positions, 2, -1 do
       if ( self.positions[i].y < screenHeight and self.positions[i - 1].y >= screenHeight ) then
         local slope = ( self.positions[i - 1].y - self.positions[i].y ) / ( self.positions[i - 1].x - self.positions[i].x )
         local dropletXPos = -1 * ( ( ( self.positions[i - 1].y - 240 ) / slope ) - self.positions[i - 1].x )
@@ -159,15 +155,15 @@ function RainDrop:fall( momentum )
   end
 
   if ( self.positions[ 1 ].x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
-    for i = 1, self.positionCount do
+    for i = 1, # self.positions do
       self.positions[ i ].x = self.positions[ i ].x - ( screenWidth + rainAreaHorizontalBuffer ) - 2 * raindropSpeed
     end
   elseif ( self.positions[ 1 ].x <= -1 * raindropSpeed ) then
-    for i = 1, self.positionCount do
+    for i = 1, # self.positions do
       self.positions[ i ].x = self.positions[ i ].x + ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
     end
   else
-    for i = self.positionCount, 2, -1 do
+    for i = # self.positions, 2, -1 do
       self.positions[i].x = self.positions[i - 1].x
     end
   end
@@ -181,7 +177,7 @@ end
 function RainDrop:reset()
   local newY = screenHeight - self.positions[ 1 ].y
 
-  for i = 1, self.positionCount do
+  for i = 1, # self.positions do
     self.positions[ i ].y = newY
   end
 end
@@ -222,8 +218,6 @@ function startUp()
     y = 0
   end
 
-  raindropCount = i - 1
-
   gfx.setBackgroundColor( gfx.kColorBlack )
   gfx.setImageDrawMode( gfx.kColorXOR )
 
@@ -259,34 +253,23 @@ function playdate.update()
 
   RainDrop.setRenderer()
 
-
-  for i = 1, raindropCount do
+  for i = 1, # raindrops do
     raindrops[i]:fall( parsedMomentum )
     raindrops[i]:render()
   end
 
-  dropletCount = # droplets
-
-  for i = 1, dropletCount do
-    if ( type( droplets[i] ) == "table" ) then
-      droplets[i]:drip()
-    end
-  end
-
   Droplet.setRenderer()
 
-  for i = 1, dropletCount do
-    if ( type( droplets[i] ) == "table" ) then
-      droplets[i]:render()
-    end
+  for i = 1, # droplets do
+    droplets[i]:drip()
+    droplets[i]:render()
   end
 
-  for i = dropletCount, 0, -1 do
-    if ( type( droplets[i] ) == "table" ) then
-      if ( droplets[i].cullMe ) then
-        droplets[i] = nil
-        table.remove( droplets, i )
-      end
+  for i = # droplets, 1, -1 do
+    if ( droplets[i].cullMe ) then
+      droplets[i].__index = nil
+      droplets[i] = nil
+      table.remove( droplets, i )
     end
   end
 
