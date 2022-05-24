@@ -15,7 +15,8 @@ local momentumTimerMaxLength <const> = 3000
 
 -- Droplet consts
 local droplets <const> = {}
-local dropletSpeed <const> = 3
+local dropletSpeed <const> = 5
+local dropletGravity <const> = playdate.geometry.vector2D.new( 0, 1 )
 local dropletMinCount <const> = 2
 local dropletMaxCount <const> = 4
 
@@ -44,7 +45,7 @@ function Droplet.new( x, y, angle )
     cullMe = false,
     x = 0,
     y = screenHeight,
-    angle = 0
+    vector
   }
 
   if ( type( x ) == "number" ) then
@@ -55,9 +56,14 @@ function Droplet.new( x, y, angle )
     newMeta.y = y
   end
 
-  if ( type ( angle ) == "number" ) then
-    newMeta.angle = angle
+  if ( type ( angle ) ~= "number" ) then
+    angle = 1.5 * math.pi
   end
+
+  newMeta.vector = playdate.geometry.vector2D.new(
+    math.cos( angle ) * dropletSpeed,
+    math.sin( angle ) * dropletSpeed
+  )
 
   local self = setmetatable( newMeta, Droplet )
   self.__index = newMeta
@@ -70,14 +76,10 @@ function Droplet.setRenderer()
 end
 
 function Droplet:drip()
-  self.x = math.cos( self.angle ) * dropletSpeed + self.x
-  self.y = math.sin( self.angle ) * dropletSpeed + self.y
+  self.vector:addVector( dropletGravity )
 
-  if ( self.angle > 1.5 * math.pi ) then
-    self.angle = self.angle + math.pi * math.random( 2, 4 ) / 32
-  else
-    self.angle = self.angle - math.pi * math.random( 2, 4 ) / 32
-  end
+  self.x = self.vector.dx + self.x
+  self.y = self.vector.dy + self.y
 
   if ( self.y >= screenHeight or self.y < 0 ) then
     self.cullMe = true
