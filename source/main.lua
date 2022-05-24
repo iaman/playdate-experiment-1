@@ -250,7 +250,7 @@ function playdate.update()
 
   local parsedMomentum = 0
 
-  if ( momentum < 720 and momentum > -720 ) then
+  if ( ( momentum < 720 and crankChange > 0 ) or ( momentum > -720 and crankChange < 0 ) ) then
     momentum += crankChangeAccel
   end
 
