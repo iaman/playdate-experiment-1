@@ -4,9 +4,9 @@ import "CoreLibs/timer"
 local gfx <const> = playdate.graphics
 
 -- Screen Properties
-local screenWidth <const> = 400
-local screenHeight <const> = 240
-local rainAreaHorizontalBuffer <const> = 200
+local screenWidth <const> = 200
+local screenHeight <const> = 120
+local rainAreaHorizontalBuffer <const> = 40
 
 -- Timer Properties
 local momentum, momentumTimer, preFadeMomentum
@@ -15,18 +15,18 @@ local momentumTimerMaxLength <const> = 3000
 
 -- Droplet consts
 local droplets <const> = {}
-local dropletSpeed <const> = 6
+local dropletSpeed <const> = 3
 local dropletMinCount <const> = 2
 local dropletMaxCount <const> = 4
 
 
 -- Raindrop consts
-local raindropMinDistance <const> = 8
-local raindropMaxDistance <const> = 16
+local raindropMinDistance <const> = 4
+local raindropMaxDistance <const> = 8
 local raindrops <const> = {}
-local raindropSpeed <const> = 18
+local raindropSpeed <const> = 9
 local raindropMinPositions <const> = 2
-local raindropMaxPositions <const> = 8
+local raindropMaxPositions <const> = 7
 local raindropVerticalSpacing <const> = 1
 
 
@@ -86,10 +86,6 @@ end
 
 function Droplet:render()
   gfx.drawPixel( self.x, self.y )
-  gfx.drawPixel( self.x, self.y + 1 )
-  gfx.drawPixel( self.x, self.y - 1 )
-  gfx.drawPixel( self.x - 1, self.y )
-  gfx.drawPixel( self.x + 1, self.y )
 end
 
 
@@ -135,7 +131,7 @@ end
 
 function RainDrop.setRenderer()
   gfx.setLineCapStyle( gfx.kLineCapStyleRound )
-  gfx.setLineWidth( 2 )
+  gfx.setLineWidth( 1 )
   gfx.setColor( gfx.kColorWhite )
 end
 
@@ -156,10 +152,12 @@ function RainDrop:fall( momentum )
   else
     for i = # self.positions, 2, -1 do
       if ( self.positions[i].y < screenHeight and self.positions[i - 1].y >= screenHeight ) then
-        local slope = ( self.positions[i - 1].y - self.positions[i].y ) / ( self.positions[i - 1].x - self.positions[i].x )
-        local dropletXPos = -1 * ( ( ( self.positions[i - 1].y - screenHeight ) / slope ) - self.positions[i - 1].x )
+        if ( math.random( 0, 4 ) > 2 ) then
+          local slope = ( self.positions[i - 1].y - self.positions[i].y ) / ( self.positions[i - 1].x - self.positions[i].x )
+          local dropletXPos = -1 * ( ( ( self.positions[i - 1].y - 240 ) / slope ) - self.positions[i - 1].x )
 
-        table.insert( droplets, Droplet.new( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi ) )
+          table.insert( droplets, Droplet.new( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi ) )
+        end
       end
 
       self.positions[i].y = self.positions[i - 1].y
@@ -197,6 +195,7 @@ end
 
 -- Initial set-up
 function startUp()
+  playdate.display.setScale( 2 )
   momentum = 0
   momentumTimer = playdate.timer.new( momentumTimerMinLength, 1, 0, playdate.easingFunctions.outQuad )
 
