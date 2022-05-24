@@ -2,17 +2,35 @@ import "CoreLibs/easing"
 import "CoreLibs/timer"
 
 local gfx <const> = playdate.graphics
+
+-- Screen Properties
 local screenWidth <const> = 400
 local screenHeight <const> = 240
 local rainAreaHorizontalBuffer <const> = 200
-local momentum, momentumTimer
 
+-- Timer Properties
+local momentum, momentumTimer, preFadeMomentum
+local momentumTimerMinLength <const> = 1000
+local momentumTimerMaxLength <const> = 3000
+
+-- Droplet consts
 local droplets <const> = {}
 local dropletSpeed <const> = 6
 local dropletMinCount <const> = 2
 local dropletMaxCount <const> = 4
 
 
+-- Raindrop consts
+local raindropMinDistance <const> = 8
+local raindropMaxDistance <const> = 16
+local raindrops <const> = {}
+local raindropSpeed <const> = 18
+local raindropMinPositions <const> = 2
+local raindropMaxPositions <const> = 8
+local raindropVerticalSpacing <const> = 1
+
+
+-- Droplet type setup
 local Droplet = {
   x = 0,
   y = 0,
@@ -74,14 +92,8 @@ function Droplet:render()
   gfx.drawPixel( self.x + 1, self.y )
 end
 
-local raindropMinDistance <const> = 8
-local raindropMaxDistance <const> = 16
-local raindrops <const> = {}
-local raindropSpeed <const> = 18
-local raindropMinPositions <const> = 2
-local raindropMaxPositions <const> = 8
-local raindropVerticalSpacing <const> = 1
 
+-- Raindrop type setup
 local RainDrop = {
   positions = {},
 }
@@ -182,20 +194,24 @@ function RainDrop:reset()
   end
 end
 
+
+-- Initial set-up
 function startUp()
   momentum = 0
-  momentumTimer = playdate.timer.new( 2000, 1, 0, playdate.easingFunctions.outQuad )
+  momentumTimer = playdate.timer.new( momentumTimerMinLength, 1, 0, playdate.easingFunctions.outQuad )
 
   momentumTimer:pause()
 
   momentumTimer.updateCallback = function( timer )
-    momentum = momentum * timer.value
+    momentum = preFadeMomentum * timer.value
   end
 
   momentumTimer.repeats = true
 
   momentumTimer.timerEndedCallback = function ( timer )
-    momentum = 0;
+    momentumTimer.duration = momentumTimerMinLength
+    momentum = 0
+    preFadeMomentum = 0
     momentumTimer:pause()
   end
 
@@ -226,26 +242,38 @@ end
 
 startUp()
 
+
+-- Main loop
 function playdate.update()
   local crankChange, crankChangeAccel = playdate.getCrankChange()
 
   local parsedMomentum = 0
 
-  if ( momentum < math.pi and momentum > -math.pi ) then
-    momentum += crankChangeAccel / 720
+  if ( momentum < 720 and momentum > -720 ) then
+    momentum += crankChangeAccel
   end
 
-  if ( momentum > 0.25 * math.pi ) then
-    momentum = 0.25 * math.pi
-  elseif ( momentum < -0.25 * math.pi ) then
-    momentum = -0.25 * math.pi
+  if ( momentum > 720 ) then
+    momentum = 720
+  elseif ( momentum < -720 ) then
+    momentum = -720
   end
 
-  parsedMomentum = momentum + 0.5 * math.pi
+  parsedMomentum = ( ( momentum / 2880 ) + 0.5 ) * math.pi
 
   if ( crankChange > 0 or crankChange < 0 ) then
+    preFadeMomentum = momentum
     momentumTimer:reset()
+
+    if ( momentumTimer.duration < momentumTimerMaxLength ) then
+      momentumTimer.duration += 30
+    end
+
+    if ( momentumTimer.duration > momentumTimerMaxLength ) then
+      momentumTimer.duration = momentumTimerMaxLength
+    end
   elseif ( momentumTimer.currentTime < 1 ) then
+    preFadeMomentum = momentum
     momentumTimer:start()
   end
 
