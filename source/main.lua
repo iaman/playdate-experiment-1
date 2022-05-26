@@ -163,7 +163,7 @@ function RainDrop:fall( momentum )
   end
 
   if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
-    self.x -= ( screenWidth + rainAreaHorizontalBuffer ) - 2 * raindropSpeed
+    self.x -= ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
   elseif ( self.x <= -1 * raindropSpeed ) then
     self.x += ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
   end
