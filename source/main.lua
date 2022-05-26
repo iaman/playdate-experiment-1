@@ -28,9 +28,9 @@ local raindropMinDistance <const> = 12 / screenScale
 local raindropMaxDistance <const> = 24 / screenScale
 local raindrops <const> = {}
 local raindropSpeed <const> = 18 / screenScale
-local raindropMinPositions <const> = 1
-local raindropMaxPositions <const> = 6
-local raindropVerticalSpacing <const> = 1
+local raindropMinSegments <const> = 1
+local raindropMaxSegments <const> = 6
+local raindropVerticalSpacing <const> = 2
 local raindropThickness <const> = 2 / screenScale
 local rainAreaHorizontalBuffer <const> = ( raindropSpeed / 2 * math.sqrt( 2 ) )
 
@@ -98,16 +98,15 @@ local RainDrop = {
 
 RainDrop.__index = RainDrop
 
-function RainDrop.new( x, y, positionCount )
+function RainDrop.new( x, y, segmentCount )
   local newMeta = {
-    positions = {},
-    lineSegments = {}
+    segmentVectors = {}
   }
 
-  if ( type( positionCount ) == "number" and positionCount > 2) then
-    positionCount = math.floor( positionCount )
+  if ( type( segmentCount ) == "number" and segmentCount > 2) then
+    segmentCount = math.floor( segmentCount )
   else
-    positionCount = 2
+    segmentCount = 2
   end
 
   if ( type( x ) == "number" ) then
@@ -118,10 +117,10 @@ function RainDrop.new( x, y, positionCount )
     newMeta.y = y
   end
 
-  local positionVector <const> = playdate.geometry.vector2D.new( 0, 0 )
+  local segmentVector <const> = playdate.geometry.vector2D.new( 0, 0 )
 
-  for i = 1, positionCount do
-    newMeta.positions[i] = positionVector
+  for i = 1, segmentCount do
+    newMeta.segmentVectors[i] = segmentVector
   end
 
   local self <const> = setmetatable( newMeta, RainDrop )
@@ -140,10 +139,10 @@ function RainDrop:render()
   local currentX = self.x
   local currentY = self.y
 
-  for i = 1, # self.positions do
-    local position <const> = self.positions[ i ]
-    local changeX <const> = position.dx
-    local changeY <const> = position.dy
+  for i = 1, # self.segmentVectors do
+    local segmentVector <const> = self.segmentVectors[ i ]
+    local changeX <const> = segmentVector.dx
+    local changeY <const> = segmentVector.dy
 
     if ( changeX ~= 0 or changeY ~= 0 ) then
       newX = currentX - changeX
@@ -159,8 +158,8 @@ end
 
 function RainDrop:fall( momentum )
 
-  for i = # self.positions, 2, -1 do
-    self.positions[ i ] = self.positions[ i - 1 ]
+  for i = # self.segmentVectors, 2, -1 do
+    self.segmentVectors[ i ] = self.segmentVectors[ i - 1 ]
   end
 
   if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
@@ -171,15 +170,15 @@ function RainDrop:fall( momentum )
 
   local raindropAngle <const> = math.random( -7, 7 ) / 100 + momentum
 
-  self.positions[ 1 ] = playdate.geometry.vector2D.new(
+  self.segmentVectors[ 1 ] = playdate.geometry.vector2D.new(
     math.cos( raindropAngle ) * raindropSpeed,
     math.sin( raindropAngle ) * raindropSpeed
   )
 
-  local firstPos <const> = self.positions[ 1 ]
+  local firstSegmentVector <const> = self.segmentVectors[ 1 ]
 
-  self.x = self.x + firstPos.dx
-  self.y = self.y + firstPos.dy
+  self.x = self.x + firstSegmentVector.dx
+  self.y = self.y + firstSegmentVector.dy
 
   if ( self.y >= screenHeight ) then
     local currentX = self.x
@@ -187,10 +186,10 @@ function RainDrop:fall( momentum )
     local newX = self.x
     local newY = self.y
 
-    for i = 1, # self.positions do
-      local position <const> = self.positions[ i ]
-      local changeX <const> = position.dx
-      local changeY <const> = position.dy
+    for i = 1, # self.segmentVectors do
+      local segmentVector <const> = self.segmentVectors[ i ]
+      local changeX <const> = segmentVector.dx
+      local changeY <const> = segmentVector.dy
 
       newX = currentX - changeX
       newY = currentY - changeY
@@ -245,11 +244,11 @@ function startUp()
     x = x + math.random( raindropMinDistance, raindropMaxDistance )
 
     while ( y >= -1 * screenHeight ) do
-      local positionCount = math.random( raindropMinPositions, raindropMaxPositions )
+      local segmentCount = math.random( raindropMinSegments, raindropMaxSegments )
 
-      table.insert( raindrops, RainDrop.new( x, y - math.random( 0, raindropSpeed * positionCount ), positionCount ) )
+      table.insert( raindrops, RainDrop.new( x, y - math.random( 0, raindropSpeed * segmentCount ), segmentCount ) )
 
-      y = y - ( raindropSpeed * ( positionCount + raindropVerticalSpacing ) )
+      y = y - ( raindropSpeed * ( segmentCount + raindropVerticalSpacing ) )
     end
 
     y = 0
