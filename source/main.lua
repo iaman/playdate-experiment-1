@@ -160,7 +160,7 @@ end
 function RainDrop:fall( momentum )
 
   for i = # self.positions, 2, -1 do
-    self.positions[i] = self.positions[i - 1]
+    self.positions[ i ] = self.positions[ i - 1 ]
   end
 
   if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
@@ -301,25 +301,37 @@ function playdate.update()
 
   RainDrop.setRenderer()
 
+  local raindrop
+
   for i = 1, # raindrops do
-    raindrops[i]:fall( parsedMomentum )
-    raindrops[i]:render()
+    raindrop = raindrops[ i ]
+    raindrop:fall( parsedMomentum )
+    raindrop:render()
   end
+
+  raindrop = nil
 
   Droplet.setRenderer()
 
+  local droplet
+
   for i = 1, # droplets do
-    droplets[i]:drip()
-    droplets[i]:render()
+    droplet = droplets[ i ]
+    droplet:drip()
+    droplet:render()
   end
 
   for i = # droplets, 1, -1 do
-    if ( droplets[i].cullMe ) then
-      droplets[i].__index = nil
-      droplets[i] = nil
+    droplet = droplets[ i ]
+
+    if ( droplet.cullMe ) then
+      droplet.__index = nil
+      droplet = nil
       table.remove( droplets, i )
     end
   end
+
+  droplet = nil
 
   playdate.timer.updateTimers()
 end
