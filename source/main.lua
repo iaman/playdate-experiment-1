@@ -24,8 +24,8 @@ local dropletSize <const> = 1 / screenScale
 
 
 -- Raindrop consts
-local raindropMinDistance <const> = 12 / screenScale
-local raindropMaxDistance <const> = 24 / screenScale
+local raindropDistance <const> = 40 / screenScale
+local raindropVariance <const> = 16 / screenScale
 local raindrops <const> = {}
 local raindropSpeed <const> = 18 / screenScale
 local raindropMinSegments <const> = 1
@@ -77,8 +77,8 @@ end
 function Droplet:drip()
   self.vector:addVector( dropletGravity )
 
-  self.x = self.vector.dx + self.x
-  self.y = self.vector.dy + self.y
+  self.x += self.vector.dx
+  self.y += self.vector.dy
 
   if ( self.y >= screenHeight or self.y < 0 ) then
     self.cullMe = true
@@ -163,9 +163,9 @@ function RainDrop:fall( momentum )
   end
 
   if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
-    self.x = self.x - ( screenWidth + rainAreaHorizontalBuffer ) - 2 * raindropSpeed
+    self.x -= ( screenWidth + rainAreaHorizontalBuffer ) - 2 * raindropSpeed
   elseif ( self.x <= -1 * raindropSpeed ) then
-    self.x = self.x + ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
+    self.x += ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
   end
 
   local raindropAngle <const> = math.random( -7, 7 ) / 100 + momentum
@@ -177,8 +177,8 @@ function RainDrop:fall( momentum )
 
   local firstSegmentVector <const> = self.segmentVectors[ 1 ]
 
-  self.x = self.x + firstSegmentVector.dx
-  self.y = self.y + firstSegmentVector.dy
+  self.x += firstSegmentVector.dx
+  self.y += firstSegmentVector.dy
 
   if ( self.y >= screenHeight ) then
     local currentX = self.x
@@ -241,7 +241,7 @@ function startUp()
   local y = 0
 
   while ( x <= screenWidth + rainAreaHorizontalBuffer ) do
-    x = x + math.random( raindropMinDistance, raindropMaxDistance )
+    x = x + raindropDistance + math.random( -raindropVariance, raindropVariance )
 
     while ( y >= -1 * screenHeight ) do
       local segmentCount = math.random( raindropMinSegments, raindropMaxSegments )
@@ -270,6 +270,12 @@ function playdate.update()
 
   if ( ( momentum < 720 and crankChange > 0 ) or ( momentum > -720 and crankChange < 0 ) ) then
     momentum += crankChangeAccel
+  end
+
+  if ( playdate.buttonIsPressed( playdate.kButtonLeft ) ) then
+    momentum -= 40
+  elseif ( playdate.buttonIsPressed( playdate.kButtonRight ) ) then
+    momentum += 40
   end
 
   if ( momentum > 720 ) then
