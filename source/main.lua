@@ -273,9 +273,9 @@ function playdate.update()
   end
 
   if ( playdate.buttonIsPressed( playdate.kButtonLeft ) ) then
-    momentum -= 40
-  elseif ( playdate.buttonIsPressed( playdate.kButtonRight ) ) then
     momentum += 40
+  elseif ( playdate.buttonIsPressed( playdate.kButtonRight ) ) then
+    momentum -= 40
   end
 
   if ( momentum > 720 ) then
@@ -286,7 +286,7 @@ function playdate.update()
 
   local parsedMomentum <const> = ( ( momentum / 2880 ) + 0.5 ) * math.pi
 
-  if ( crankChange > 0 or crankChange < 0 ) then
+  if ( crankChange > 0 or crankChange < 0 or playdate.buttonIsPressed( playdate.kButtonLeft ) or playdate.buttonIsPressed( playdate.kButtonRight ) ) then
     preFadeMomentum = momentum
     momentumTimer:reset()
 
