@@ -1,12 +1,13 @@
+import "CoreLibs/graphics"
 import "CoreLibs/easing"
 import "CoreLibs/timer"
 
 local gfx <const> = playdate.graphics
 
 -- Screen Properties
-local screenWidth <const> = 200
-local screenHeight <const> = 120
-local rainAreaHorizontalBuffer <const> = 40
+local screenScale <const> = 1
+local screenWidth <const> = 400 / screenScale
+local screenHeight <const> = 240 / screenScale
 
 -- Timer Properties
 local momentum, momentumTimer, preFadeMomentum
@@ -15,38 +16,36 @@ local momentumTimerMaxLength <const> = 3000
 
 -- Droplet consts
 local droplets <const> = {}
-local dropletSpeed <const> = 5
-local dropletGravity <const> = playdate.geometry.vector2D.new( 0, 1 )
+local dropletSpeed <const> = 10 / screenScale
+local dropletGravity <const> = playdate.geometry.vector2D.new( 0, 2 / screenScale )
 local dropletMinCount <const> = 2
 local dropletMaxCount <const> = 4
+local dropletSize <const> = 1 / screenScale
 
 
 -- Raindrop consts
-local raindropMinDistance <const> = 4
-local raindropMaxDistance <const> = 8
+local raindropMinDistance <const> = 12 / screenScale
+local raindropMaxDistance <const> = 24 / screenScale
 local raindrops <const> = {}
-local raindropSpeed <const> = 9
-local raindropMinPositions <const> = 2
-local raindropMaxPositions <const> = 7
+local raindropSpeed <const> = 18 / screenScale
+local raindropMinPositions <const> = 1
+local raindropMaxPositions <const> = 6
 local raindropVerticalSpacing <const> = 1
+local raindropThickness <const> = 2 / screenScale
+local rainAreaHorizontalBuffer <const> = ( raindropSpeed / 2 * math.sqrt( 2 ) )
 
 
 -- Droplet type setup
 local Droplet = {
+  cullMe = false,
   x = 0,
-  y = 0,
-  angle = 0
+  y = screenHeight
 }
 
 Droplet.__index = Droplet
 
 function Droplet.new( x, y, angle )
-  local newMeta = {
-    cullMe = false,
-    x = 0,
-    y = screenHeight,
-    vector
-  }
+  local newMeta = {}
 
   if ( type( x ) == "number" ) then
     newMeta.x = x
@@ -65,7 +64,7 @@ function Droplet.new( x, y, angle )
     math.sin( angle ) * dropletSpeed
   )
 
-  local self = setmetatable( newMeta, Droplet )
+  local self <const> = setmetatable( newMeta, Droplet )
   self.__index = newMeta
 
   return self
@@ -87,20 +86,22 @@ function Droplet:drip()
 end
 
 function Droplet:render()
-  gfx.drawPixel( self.x, self.y )
+  gfx.fillCircleAtPoint( self.x, self.y, dropletSize )
 end
 
 
 -- Raindrop type setup
 local RainDrop = {
-  positions = {},
+  x = 0,
+  y = 0
 }
 
 RainDrop.__index = RainDrop
 
 function RainDrop.new( x, y, positionCount )
   local newMeta = {
-    positions = {}
+    positions = {},
+    lineSegments = {}
   }
 
   if ( type( positionCount ) == "number" and positionCount > 2) then
@@ -109,23 +110,21 @@ function RainDrop.new( x, y, positionCount )
     positionCount = 2
   end
 
-  for i = 1, positionCount do
-    newMeta.positions[i] = {}
-
-    if ( type( x ) == "number" ) then
-      newMeta.positions[i].x = x
-    else
-      newMeta.positions[i].x = 0
-    end
-
-    if ( type( y ) == "number" ) then
-      newMeta.positions[i].y = y
-    else
-      newMeta.positions[i].y = 0
-    end
+  if ( type( x ) == "number" ) then
+    newMeta.x = x
   end
 
-  local self = setmetatable( newMeta, RainDrop )
+  if ( type( y ) == "number" ) then
+    newMeta.y = y
+  end
+
+  local positionVector <const> = playdate.geometry.vector2D.new( 0, 0 )
+
+  for i = 1, positionCount do
+    newMeta.positions[i] = positionVector
+  end
+
+  local self <const> = setmetatable( newMeta, RainDrop )
   self.__index = newMeta
 
   return self
@@ -133,71 +132,94 @@ end
 
 function RainDrop.setRenderer()
   gfx.setLineCapStyle( gfx.kLineCapStyleRound )
-  gfx.setLineWidth( 1 )
+  gfx.setLineWidth( raindropThickness )
   gfx.setColor( gfx.kColorWhite )
 end
 
 function RainDrop:render()
-  for i = 1, # self.positions - 1 do
-    local position = self.positions[ i ]
-    local nextPosition = self.positions[ i + 1 ]
+  local currentX = self.x
+  local currentY = self.y
 
-    if ( position.x ~= nextPosition.x and position.y ~= nextPosition.y ) then
-      gfx.drawLine( position.x, position.y, nextPosition.x, nextPosition.y )
+  for i = 1, # self.positions do
+    local position <const> = self.positions[ i ]
+    local changeX <const> = position.dx
+    local changeY <const> = position.dy
+
+    if ( changeX ~= 0 or changeY ~= 0 ) then
+      newX = currentX - changeX
+      newY = currentY - changeY
+
+      gfx.drawLine( currentX, currentY, newX, newY )
+
+      currentX = newX
+      currentY = newY
     end
   end
 end
 
 function RainDrop:fall( momentum )
-  if ( self.positions[ # self.positions ].y >= screenHeight ) then
-    self:reset()
-  else
-    for i = # self.positions, 2, -1 do
-      if ( self.positions[i].y < screenHeight and self.positions[i - 1].y >= screenHeight ) then
-        if ( math.random( 0, 4 ) > 2 ) then
-          local slope = ( self.positions[i - 1].y - self.positions[i].y ) / ( self.positions[i - 1].x - self.positions[i].x )
-          local dropletXPos = -1 * ( ( ( self.positions[i - 1].y - 240 ) / slope ) - self.positions[i - 1].x )
 
-          table.insert( droplets, Droplet.new( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi ) )
-        end
+  for i = # self.positions, 2, -1 do
+    self.positions[i] = self.positions[i - 1]
+  end
+
+  if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
+    self.x = self.x - ( screenWidth + rainAreaHorizontalBuffer ) - 2 * raindropSpeed
+  elseif ( self.x <= -1 * raindropSpeed ) then
+    self.x = self.x + ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
+  end
+
+  local raindropAngle <const> = math.random( -7, 7 ) / 100 + momentum
+
+  self.positions[ 1 ] = playdate.geometry.vector2D.new(
+    math.cos( raindropAngle ) * raindropSpeed,
+    math.sin( raindropAngle ) * raindropSpeed
+  )
+
+  local firstPos <const> = self.positions[ 1 ]
+
+  self.x = self.x + firstPos.dx
+  self.y = self.y + firstPos.dy
+
+  if ( self.y >= screenHeight ) then
+    local currentX = self.x
+    local currentY = self.y
+    local newX = self.x
+    local newY = self.y
+
+    for i = 1, # self.positions do
+      local position <const> = self.positions[ i ]
+      local changeX <const> = position.dx
+      local changeY <const> = position.dy
+
+      newX = currentX - changeX
+      newY = currentY - changeY
+
+      if ( currentY >= screenHeight and newY < screenHeight and math.random( 0, 1 ) > 0 ) then
+        local slope = changeY / changeX
+        local dropletXPos = -1 * ( ( ( newY - screenHeight ) / slope ) - newX )
+
+        table.insert( droplets, Droplet.new( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi ) )
       end
 
-      self.positions[i].y = self.positions[i - 1].y
+      currentY = newY
+      currentX = newX
+    end
+
+    if ( newY >= screenHeight ) then
+      self:reset()
     end
   end
-
-  if ( self.positions[ 1 ].x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
-    for i = 1, # self.positions do
-      self.positions[ i ].x = self.positions[ i ].x - ( screenWidth + rainAreaHorizontalBuffer ) - 2 * raindropSpeed
-    end
-  elseif ( self.positions[ 1 ].x <= -1 * raindropSpeed ) then
-    for i = 1, # self.positions do
-      self.positions[ i ].x = self.positions[ i ].x + ( screenWidth + rainAreaHorizontalBuffer ) + 2 * raindropSpeed
-    end
-  else
-    for i = # self.positions, 2, -1 do
-      self.positions[i].x = self.positions[i - 1].x
-    end
-  end
-
-  local raindropAngle = math.random( -7, 7 ) / 100 + momentum
-
-  self.positions[ 1 ].x = math.cos( raindropAngle ) * raindropSpeed + self.positions[ 1 ].x
-  self.positions[ 1 ].y = math.sin( raindropAngle ) * raindropSpeed + self.positions[ 1 ].y
 end
 
 function RainDrop:reset()
-  local newY = screenHeight - self.positions[ 1 ].y
-
-  for i = 1, # self.positions do
-    self.positions[ i ].y = newY
-  end
+  self.y = -2 * raindropSpeed
 end
 
 
 -- Initial set-up
 function startUp()
-  playdate.display.setScale( 2 )
+  playdate.display.setScale( screenScale )
   momentum = 0
   momentumTimer = playdate.timer.new( momentumTimerMinLength, 1, 0, playdate.easingFunctions.outQuad )
 
@@ -218,7 +240,6 @@ function startUp()
 
   local x = -1 * rainAreaHorizontalBuffer
   local y = 0
-  local i = 1
 
   while ( x <= screenWidth + rainAreaHorizontalBuffer ) do
     x = x + math.random( raindropMinDistance, raindropMaxDistance )
@@ -226,8 +247,7 @@ function startUp()
     while ( y >= -1 * screenHeight ) do
       local positionCount = math.random( raindropMinPositions, raindropMaxPositions )
 
-      raindrops[i] = RainDrop.new( x, y - math.random( 0, raindropSpeed * positionCount ), positionCount )
-      i = i + 1
+      table.insert( raindrops, RainDrop.new( x, y - math.random( 0, raindropSpeed * positionCount ), positionCount ) )
 
       y = y - ( raindropSpeed * ( positionCount + raindropVerticalSpacing ) )
     end
@@ -237,6 +257,7 @@ function startUp()
 
   gfx.setBackgroundColor( gfx.kColorBlack )
   gfx.setImageDrawMode( gfx.kColorXOR )
+  gfx.setClipRect( 0, 0, screenWidth, screenHeight )
 
   gfx.clear()
 end
@@ -248,8 +269,6 @@ startUp()
 function playdate.update()
   local crankChange, crankChangeAccel = playdate.getCrankChange()
 
-  local parsedMomentum = 0
-
   if ( ( momentum < 720 and crankChange > 0 ) or ( momentum > -720 and crankChange < 0 ) ) then
     momentum += crankChangeAccel
   end
@@ -260,7 +279,7 @@ function playdate.update()
     momentum = -720
   end
 
-  parsedMomentum = ( ( momentum / 2880 ) + 0.5 ) * math.pi
+  local parsedMomentum <const> = ( ( momentum / 2880 ) + 0.5 ) * math.pi
 
   if ( crankChange > 0 or crankChange < 0 ) then
     preFadeMomentum = momentum
