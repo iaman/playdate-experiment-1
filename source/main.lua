@@ -37,41 +37,22 @@ local rainAreaHorizontalBuffer <const> = ( raindropSpeed / 2 * math.sqrt( 2 ) )
 
 -- Droplet type setup
 local Droplet = {
-  cullMe = false,
+  renderMe = false,
   x = 0,
   y = screenHeight
 }
 
 Droplet.__index = Droplet
 
-function Droplet.new( x, y, angle )
+function Droplet.new()
   local newMeta = {}
 
-  if ( type( x ) == "number" ) then
-    newMeta.x = x
-  end
-
-  if ( type ( y ) == "number" ) then
-    newMeta.y = y
-  end
-
-  if ( type ( angle ) ~= "number" ) then
-    angle = 1.5 * math.pi
-  end
-
-  newMeta.vector = playdate.geometry.vector2D.new(
-    math.cos( angle ) * dropletSpeed,
-    math.sin( angle ) * dropletSpeed
-  )
+  newMeta.vector = playdate.geometry.vector2D.new( 0, 0 )
 
   local self <const> = setmetatable( newMeta, Droplet )
   self.__index = newMeta
 
   return self
-end
-
-function Droplet.setRenderer()
-  gfx.setColor( gfx.kColorWhite )
 end
 
 function Droplet:drip()
@@ -81,8 +62,27 @@ function Droplet:drip()
   self.y += self.vector.dy
 
   if ( self.y >= screenHeight or self.y < 0 ) then
-    self.cullMe = true
+    self.renderMe = false
   end
+end
+
+function Droplet:reset( x, y, angle )
+  if ( type ( x ) == "number" ) then
+    self.x = x
+  end
+
+  if ( type ( y ) == "number" ) then
+    self.y = y
+  end
+
+  if ( type ( angle ) ~= "number" ) then
+    angle = 1.5 * math.pi
+  end
+
+  self.vector.dx = math.cos( angle ) * dropletSpeed
+  self.vector.dy = math.sin( angle ) * dropletSpeed
+
+  self.renderMe = true
 end
 
 function Droplet:render()
@@ -100,7 +100,8 @@ RainDrop.__index = RainDrop
 
 function RainDrop.new( x, y, segmentCount )
   local newMeta = {
-    segmentVectors = {}
+    segmentVectors = {},
+    droplets = {}
   }
 
   if ( type( segmentCount ) == "number" and segmentCount > 2) then
@@ -120,7 +121,8 @@ function RainDrop.new( x, y, segmentCount )
   local segmentVector <const> = playdate.geometry.vector2D.new( 0, 0 )
 
   for i = 1, segmentCount do
-    newMeta.segmentVectors[i] = segmentVector
+    newMeta.segmentVectors[ i ] = segmentVector
+    newMeta.droplets[ i ] = Droplet.new()
   end
 
   local self <const> = setmetatable( newMeta, RainDrop )
@@ -153,13 +155,23 @@ function RainDrop:render()
       currentX = newX
       currentY = newY
     end
+
+    local droplet <const> = self.droplets[ i ]
+
+    if ( droplet.renderMe ) then
+      droplet:render()
+    end
   end
 end
 
 function RainDrop:fall( momentum )
 
-  for i = # self.segmentVectors, 2, -1 do
-    self.segmentVectors[ i ] = self.segmentVectors[ i - 1 ]
+  for i = # self.segmentVectors, 1, -1 do
+    if ( i ~= 1 ) then
+      self.segmentVectors[ i ] = self.segmentVectors[ i - 1 ]
+    end
+
+    self.droplets[ i ]:drip()
   end
 
   if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
@@ -194,11 +206,11 @@ function RainDrop:fall( momentum )
       newX = currentX - changeX
       newY = currentY - changeY
 
-      if ( currentY >= screenHeight and newY < screenHeight and math.random( 0, 1 ) > 0 ) then
+      if ( currentY >= screenHeight and newY < screenHeight and not self.droplets[ i ].renderMe ) then
         local slope = changeY / changeX
         local dropletXPos = -1 * ( ( ( newY - screenHeight ) / slope ) - newX )
 
-        table.insert( droplets, Droplet.new( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi ) )
+        self.droplets[ i ]:reset( dropletXPos, screenHeight, math.random( 18, 30 ) / 16 * math.pi )
       end
 
       currentY = newY
@@ -306,37 +318,13 @@ function playdate.update()
 
   RainDrop.setRenderer()
 
-  local raindrop
-
   for i = 1, # raindrops do
-    raindrop = raindrops[ i ]
+    local raindrop <const> = raindrops[ i ]
     raindrop:fall( parsedMomentum )
     raindrop:render()
   end
 
-  raindrop = nil
-
-  Droplet.setRenderer()
-
-  local droplet
-
-  for i = 1, # droplets do
-    droplet = droplets[ i ]
-    droplet:drip()
-    droplet:render()
-  end
-
-  for i = # droplets, 1, -1 do
-    droplet = droplets[ i ]
-
-    if ( droplet.cullMe ) then
-      droplet.__index = nil
-      droplet = nil
-      table.remove( droplets, i )
-    end
-  end
-
-  droplet = nil
+  playdate.drawFPS()
 
   playdate.timer.updateTimers()
 end
