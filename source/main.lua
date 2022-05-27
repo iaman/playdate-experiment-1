@@ -10,9 +10,11 @@ local screenWidth <const> = 400 / screenScale
 local screenHeight <const> = 240 / screenScale
 
 -- Timer Properties
-local momentum, momentumTimer, preFadeMomentum
+local momentum, momentumTimer, preFadeMomentum, lastMomentum
 local momentumTimerMinLength <const> = 1000
 local momentumTimerMaxLength <const> = 3000
+local lastMovementX = 0
+local lastMovementY = 0
 
 -- Droplet consts
 local droplets <const> = {}
@@ -24,15 +26,21 @@ local dropletSize <const> = 1 / screenScale
 
 
 -- Raindrop consts
-local raindropDistance <const> = 40 / screenScale
-local raindropVariance <const> = 16 / screenScale
-local raindrops <const> = {}
+local raindropDistance <const> = 18 / screenScale
+local raindropVariance <const> = 8 / screenScale
+local raindropsEven <const> = {}
+local raindropsOdd <const> = {}
 local raindropSpeed <const> = 18 / screenScale
 local raindropMinSegments <const> = 1
 local raindropMaxSegments <const> = 6
 local raindropVerticalSpacing <const> = 2
 local raindropThickness <const> = 2 / screenScale
 local rainAreaHorizontalBuffer <const> = ( raindropSpeed / 2 * math.sqrt( 2 ) )
+local rainDropBufferEven <const> = gfx.image.new( screenWidth + 2 * rainAreaHorizontalBuffer, screenHeight + raindropSpeed )
+local rainDropBufferOdd <const> = gfx.image.new( screenWidth + 2 * rainAreaHorizontalBuffer, screenHeight + raindropSpeed )
+
+
+local isEven = true
 
 
 -- Droplet type setup
@@ -155,23 +163,12 @@ function RainDrop:render()
       currentX = newX
       currentY = newY
     end
-
-    local droplet <const> = self.droplets[ i ]
-
-    if ( droplet.renderMe ) then
-      droplet:render()
-    end
   end
 end
 
-function RainDrop:fall( momentum )
-
-  for i = # self.segmentVectors, 1, -1 do
-    if ( i ~= 1 ) then
-      self.segmentVectors[ i ] = self.segmentVectors[ i - 1 ]
-    end
-
-    self.droplets[ i ]:drip()
+function RainDrop:fall( momentum, lastMovementX, lastMovementY )
+  for i = # self.segmentVectors, 2, -1 do
+    self.segmentVectors[ i ] = self.segmentVectors[ i - 1 ]
   end
 
   if ( self.x >= screenWidth + rainAreaHorizontalBuffer + raindropSpeed ) then
@@ -189,8 +186,8 @@ function RainDrop:fall( momentum )
 
   local firstSegmentVector <const> = self.segmentVectors[ 1 ]
 
-  self.x += firstSegmentVector.dx
-  self.y += firstSegmentVector.dy
+  self.x += firstSegmentVector.dx + lastMovementX
+  self.y += firstSegmentVector.dy + lastMovementY
 
   if ( self.y >= screenHeight ) then
     local currentX = self.x
@@ -223,8 +220,28 @@ function RainDrop:fall( momentum )
   end
 end
 
+function RainDrop:renderDroplets()
+  for i = 1, # self.droplets do
+    local droplet <const> = self.droplets[ i ]
+
+    if ( droplet.renderMe ) then
+      droplet:render()
+    end
+  end
+end
+
+function RainDrop:dripDroplets()
+  for i = 1, # self.droplets do
+    local droplet <const> = self.droplets[ i ]
+
+    if ( droplet.renderMe ) then
+      droplet:drip()
+    end
+  end
+end
+
 function RainDrop:reset()
-  self.y = -2 * raindropSpeed
+  self.y = -raindropSpeed
 end
 
 
@@ -251,6 +268,7 @@ function startUp()
 
   local x = -1 * rainAreaHorizontalBuffer
   local y = 0
+  local isEven = true
 
   while ( x <= screenWidth + rainAreaHorizontalBuffer ) do
     x = x + raindropDistance + math.random( -raindropVariance, raindropVariance )
@@ -258,7 +276,9 @@ function startUp()
     while ( y >= -1 * screenHeight ) do
       local segmentCount = math.random( raindropMinSegments, raindropMaxSegments )
 
-      table.insert( raindrops, RainDrop.new( x, y - math.random( 0, raindropSpeed * segmentCount ), segmentCount ) )
+      table.insert( isEven and raindropsEven or raindropsOdd, RainDrop.new( x, y - math.random( 0, raindropSpeed * segmentCount ), segmentCount ) )
+
+      isEven = not isEven
 
       y = y - ( raindropSpeed * ( segmentCount + raindropVerticalSpacing ) )
     end
@@ -268,7 +288,6 @@ function startUp()
 
   gfx.setBackgroundColor( gfx.kColorBlack )
   gfx.setImageDrawMode( gfx.kColorXOR )
-  gfx.setClipRect( 0, 0, screenWidth, screenHeight )
 
   gfx.clear()
 end
@@ -318,13 +337,60 @@ function playdate.update()
 
   RainDrop.setRenderer()
 
-  for i = 1, # raindrops do
-    local raindrop <const> = raindrops[ i ]
-    raindrop:fall( parsedMomentum )
-    raindrop:render()
+  if ( isEven ) then
+    rainDropBufferEven:clear( gfx.kColorClear )
+    gfx.pushContext( rainDropBufferEven )
+
+    for i = 1, # raindropsEven do
+      local raindrop <const> = raindropsEven[ i ]
+      raindrop:fall( parsedMomentum, lastMovementX, lastMovementY )
+      raindrop:render()
+    end
+  else
+    rainDropBufferOdd:clear( gfx.kColorClear )
+    gfx.pushContext( rainDropBufferOdd )
+
+    for i = 1, # raindropsOdd do
+      local raindrop <const> = raindropsOdd[ i ]
+      raindrop:fall( parsedMomentum, lastMovementX, lastMovementY )
+      raindrop:render()
+    end
   end
+
+  gfx.popContext()
+
+  for i = 1, # raindropsEven do
+    local raindrop <const> = raindropsEven[ i ]
+    raindrop:dripDroplets()
+    raindrop:renderDroplets()
+  end
+
+  for i = 1, # raindropsOdd do
+    local raindrop <const> = raindropsOdd[ i ]
+    raindrop:dripDroplets()
+    raindrop:renderDroplets()
+  end
+
+  local drawOffsetX <const> = math.cos( parsedMomentum ) * raindropSpeed
+  local drawOffsetY <const> = math.sin( parsedMomentum ) * raindropSpeed
+
+  if ( isEven ) then
+    rainDropBufferOdd:draw( -rainAreaHorizontalBuffer + drawOffsetX, -raindropSpeed + drawOffsetY )
+
+    rainDropBufferEven:draw( -rainAreaHorizontalBuffer, -raindropSpeed )
+  else
+    rainDropBufferEven:draw( -rainAreaHorizontalBuffer + drawOffsetX, -raindropSpeed + drawOffsetY )
+
+    rainDropBufferOdd:draw( -rainAreaHorizontalBuffer, -raindropSpeed )
+  end
+
+  lastMovementX = drawOffsetX
+  lastMovementY = drawOffsetY
+
 
   playdate.drawFPS()
 
   playdate.timer.updateTimers()
+
+  isEven = not isEven
 end
