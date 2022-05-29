@@ -26,14 +26,14 @@ local dropletSize <const> = 1 / screenScale
 
 
 -- Raindrop consts
-local raindropDistance <const> = 18 / screenScale
-local raindropVariance <const> = 8 / screenScale
+local raindropDistance <const> = 40 / screenScale
+local raindropVariance <const> = 16 / screenScale
 local raindropsEven <const> = {}
 local raindropsOdd <const> = {}
 local raindropSpeed <const> = 18 / screenScale
 local raindropMinSegments <const> = 1
 local raindropMaxSegments <const> = 6
-local raindropVerticalSpacing <const> = 2
+local raindropVerticalSpacing <const> = 1
 local raindropThickness <const> = 2 / screenScale
 local rainAreaHorizontalBuffer <const> = ( raindropSpeed / 2 * math.sqrt( 2 ) )
 local rainDropBufferEven <const> = gfx.image.new( screenWidth + 2 * rainAreaHorizontalBuffer, screenHeight + raindropSpeed )
