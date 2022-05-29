@@ -388,8 +388,6 @@ function playdate.update()
   lastMovementY = drawOffsetY
 
 
-  playdate.drawFPS()
-
   playdate.timer.updateTimers()
 
   isEven = not isEven
