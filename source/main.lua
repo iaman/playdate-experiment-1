@@ -241,6 +241,7 @@ function RainDrop:dripDroplets()
 end
 
 function RainDrop:reset()
+  self.x += math.random( -raindropVariance, raindropVariance )
   self.y = -raindropSpeed
 end
 
@@ -271,18 +272,20 @@ function startUp()
   local isEven = true
 
   while ( x <= screenWidth + rainAreaHorizontalBuffer ) do
-    x = x + raindropDistance + math.random( -raindropVariance, raindropVariance )
+    x += raindropDistance
 
     while ( y >= -1 * screenHeight ) do
+      local dropX = x + math.random( -raindropVariance, raindropVariance )
       local segmentCount = math.random( raindropMinSegments, raindropMaxSegments )
 
-      table.insert( isEven and raindropsEven or raindropsOdd, RainDrop.new( x, y - math.random( 0, raindropSpeed * segmentCount ), segmentCount ) )
+      table.insert( isEven and raindropsEven or raindropsOdd, RainDrop.new( dropX, y - math.random( 0, raindropSpeed * segmentCount ), segmentCount ) )
 
       isEven = not isEven
 
       y = y - ( raindropSpeed * ( segmentCount + raindropVerticalSpacing ) )
     end
 
+    x += raindropDistance
     y = 0
   end
 
