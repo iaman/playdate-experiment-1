@@ -26,8 +26,8 @@ local dropletSize <const> = 1 / screenScale
 
 
 -- Raindrop consts
-local raindropDistance <const> = 40 / screenScale
-local raindropVariance <const> = 16 / screenScale
+local raindropDistance <const> = 66 / screenScale
+local raindropVariance <const> = 30 / screenScale
 local raindropsEven <const> = {}
 local raindropsOdd <const> = {}
 local raindropSpeed <const> = 18 / screenScale
