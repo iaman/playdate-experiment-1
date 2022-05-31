@@ -285,7 +285,6 @@ function startUp()
       y = y - ( raindropSpeed * ( segmentCount + raindropVerticalSpacing ) )
     end
 
-    x += raindropDistance
     y = 0
   end
 
